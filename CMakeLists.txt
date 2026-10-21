@@ -86,3 +86,9 @@ add_custom_target(host-tests-build ALL DEPENDS host-tests)
 enable_testing()
 add_test(NAME host-unit COMMAND ${CMAKE_BINARY_DIR}/host-tests)
 add_test(NAME iso-unit COMMAND ${PYTHON} ${CMAKE_SOURCE_DIR}/tests/iso_test.py ${CMAKE_BINARY_DIR}/LamOS.iso)
+target_sources(kernel.elf PRIVATE lib/surface.c)
+add_custom_command(OUTPUT surface-tests
+ COMMAND ${HOST_CC} -std=c17 -Wall -Wextra -Werror -g -fsanitize=undefined -fno-sanitize-recover=all -I${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/tests/surface.c ${CMAKE_SOURCE_DIR}/lib/surface.c -o surface-tests
+ DEPENDS tests/surface.c lib/surface.c include/surface.h VERBATIM)
+add_custom_target(surface-tests-build ALL DEPENDS surface-tests)
+add_test(NAME surface-unit COMMAND ${CMAKE_BINARY_DIR}/surface-tests)
