@@ -49,7 +49,6 @@ void keyboard_byte(struct Keyboard *k, struct EventQueue *q, uint8_t raw) {
     unsigned scan = raw & 0x7f, code = scan + (k->extended ? 128 : 0);
     bool was = k->pressed[code];
     k->pressed[code] = !up;
-    event_push(q, (struct Event){.type = up ? KEY_UP : KEY_DOWN, .code = (uint16_t)code});
     if (!k->extended && (scan == 42 || scan == 54)) {
         uint8_t mask = scan == 42 ? 1 : 2;
         if (up)
@@ -63,6 +62,10 @@ void keyboard_byte(struct Keyboard *k, struct EventQueue *q, uint8_t raw) {
         k->alt = k->pressed[56] || k->pressed[184];
     if (!k->extended && scan == 58 && !up && !was)
         k->caps = !k->caps;
+    uint8_t mods = (k->shifts ? MOD_SHIFT : 0) | (k->ctrl ? MOD_CTRL : 0) | (k->alt ? MOD_ALT : 0) |
+                   (k->caps ? MOD_CAPS : 0);
+    event_push(q, (struct Event){
+                      .type = up ? KEY_UP : KEY_DOWN, .code = (uint16_t)code, .modifiers = mods});
     if (!up && !k->extended && !k->ctrl && !k->alt) {
         char c = plain[scan];
         if (c >= 'a' && c <= 'z') {
@@ -70,8 +73,8 @@ void keyboard_byte(struct Keyboard *k, struct EventQueue *q, uint8_t raw) {
                 c = (char)(c - 'a' + 'A');
         } else if (k->shifts && shifted[scan])
             c = shifted[scan];
-        if (c)
-            event_push(q, (struct Event){.type = TEXT_INPUT, .text = c});
+        if (c >= 32 && c <= 126)
+            event_push(q, (struct Event){.type = TEXT_INPUT, .text = c, .modifiers = mods});
     }
     k->extended = false;
 }

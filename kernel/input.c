@@ -119,3 +119,13 @@ bool input_next(struct Event *e) {
 uint64_t input_dropped(void) {
     return queue.dropped;
 }
+
+struct InputSnapshot input_recover(void) {
+    uint64_t flags = irq_save();
+    queue.tail = queue.head;
+    struct InputSnapshot s = {(keyboard.shifts ? MOD_SHIFT : 0) | (keyboard.ctrl ? MOD_CTRL : 0) |
+                                  (keyboard.alt ? MOD_ALT : 0) | (keyboard.caps ? MOD_CAPS : 0),
+                              mouse.buttons, queue.dropped};
+    irq_restore(flags);
+    return s;
+}

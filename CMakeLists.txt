@@ -110,3 +110,9 @@ add_custom_command(OUTPUT wm-tests
  DEPENDS tests/wm.c lib/wm.c lib/compositor.c lib/surface.c include/wm.h VERBATIM)
 add_custom_target(wm-tests-build ALL DEPENDS wm-tests)
 add_test(NAME wm-unit COMMAND ${CMAKE_BINARY_DIR}/wm-tests)
+target_sources(kernel.elf PRIVATE lib/terminal.c lib/shell.c)
+add_custom_command(OUTPUT terminal-tests
+ COMMAND ${HOST_CC} -std=c17 -Wall -Wextra -Werror -g -fsanitize=undefined -fno-sanitize-recover=all -I${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/tests/terminal.c ${CMAKE_SOURCE_DIR}/lib/terminal.c ${CMAKE_SOURCE_DIR}/lib/shell.c ${CMAKE_SOURCE_DIR}/lib/resources.c ${CMAKE_SOURCE_DIR}/lib/surface.c -o terminal-tests
+ DEPENDS tests/terminal.c lib/terminal.c lib/shell.c lib/resources.c lib/surface.c include/terminal.h include/input.h VERBATIM)
+add_custom_target(terminal-tests-build ALL DEPENDS terminal-tests)
+add_test(NAME terminal-unit COMMAND ${CMAKE_BINARY_DIR}/terminal-tests)
