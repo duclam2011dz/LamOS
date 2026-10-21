@@ -64,6 +64,9 @@ bool pool_free(struct FramePool *p, uint64_t a) {
     return true;
 }
 void heap_init(struct Heap *h, void *start, size_t size) {
+    h->allocations = 0;
+    h->used = 0;
+    h->peak = 0;
     h->start = start;
     h->size = size;
     h->first = start;
@@ -85,6 +88,10 @@ void *heap_alloc(struct Heap *h, size_t n) {
             b->next = next;
         }
         b->free = false;
+        h->allocations++;
+        h->used += b->size;
+        if (h->used > h->peak)
+            h->peak = h->used;
         return b + 1;
     }
     return 0;
@@ -103,6 +110,8 @@ bool heap_free(struct Heap *h, const void *ptr) {
     }
     if (!found || found->free)
         return false;
+    h->allocations--;
+    h->used -= found->size;
     found->free = true;
     for (struct HeapBlock *b = h->first; b && b->next;) {
         if (b->free && b->next->free) {
@@ -112,4 +121,15 @@ bool heap_free(struct Heap *h, const void *ptr) {
             b = b->next;
     }
     return true;
+}
+
+struct HeapStats heap_stats(const struct Heap *h) {
+    struct HeapStats s = {h->allocations, h->used, 0, h->peak, 0};
+    for (const struct HeapBlock *b = h->first; b; b = b->next)
+        if (b->free) {
+            s.free += b->size;
+            if (b->size > s.largest)
+                s.largest = b->size;
+        }
+    return s;
 }

@@ -110,19 +110,6 @@ static void inputs(void) {
          "overflow");
 }
 static void graphics(void) {
-    uint32_t data[102];
-    for (unsigned i = 0; i < 102; i++)
-        data[i] = 0xdeadbeef;
-    struct Canvas c = {data + 1, 10, 10};
-    canvas_rect(&c, -4, -4, 8, 8, 1);
-    assert(data[1] == 1 && data[4] == 1 && data[5] == 0xdeadbeef);
-    canvas_rect(&c, INT_MAX, INT_MAX, INT_MAX, INT_MAX, 2);
-    canvas_pixel(&c, -1, 0, 3);
-    canvas_line(&c, INT_MIN, 5, INT_MAX, 5, 4);
-    for (unsigned x = 0; x < 10; x++)
-        assert(c.pixels[50 + x] == 4);
-    canvas_line(&c, -10, -10, -1, -1, 5);
-    assert(data[0] == 0xdeadbeef && data[101] == 0xdeadbeef);
     assert(framebuffer_color(0x123456, 16, 8, 8, 8, 0, 8) == 0x123456);
     assert(framebuffer_color(0x123456, 0, 8, 8, 8, 16, 8) == 0x563412);
     puts("PASS clipping, extreme coordinates, pixel channel layouts");

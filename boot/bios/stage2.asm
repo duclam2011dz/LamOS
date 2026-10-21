@@ -110,11 +110,11 @@ start:
  ; Keep first usable mode, replace with preferred 1024x768x32.
  cmp word [chosen],0
  je .save
- cmp word [0x6212],1024
+ cmp word [0x6212],VIDEO_WIDTH
  jne .next_mode
- cmp word [0x6214],768
+ cmp word [0x6214],VIDEO_HEIGHT
  jne .next_mode
- cmp byte [0x6219],32
+ cmp byte [0x6219],VIDEO_BPP
  jne .next_mode
 .save:
  mov ax,[mode]
@@ -192,28 +192,124 @@ start:
  mov [file_lba],eax
  mov eax,[fs:si+10]
  mov [0x5018],eax
- cmp eax,0x50000
+ cmp eax,0x400000
  ja fail
- add eax,2047
- shr eax,11
- mov [sectors],ax
- mov word [load_segment],0x1000
-.load:
- mov eax,[file_lba]
- mov bx,[load_segment]
- call read_sector
- inc dword [file_lba]
- add word [load_segment],0x80
- dec word [sectors]
- jnz .load
- mov al,'G'
- call mark
- ; A20, flat protected mode, C ELF loader.
+ cmp eax,64
+ jb fail
+ ; Enable A20 before any protected-mode copy.
  in al,0x92
  and al,0xfe
  or al,2
  out 0x92,al
+ mov eax,[file_lba]
+ mov bx,0x1800
+ call read_sector
+ mov dword [pm_command],0
+ call pm_call
+ ; Program headers may live anywhere inside the ELF, not only its first sector.
+ mov ax,0x1800
+ mov fs,ax
+ mov eax,[fs:32]
+ mov edx,eax
+ and edx,2047
+ mov [ph_offset],edx
+ shr eax,11
+ add eax,[file_lba]
+ mov [read_lba],eax
+ movzx ecx,word [fs:56]
+ imul ecx,56
+ add ecx,edx
+ add ecx,2047
+ shr ecx,11
+ mov [remaining],ecx
+ mov word [load_segment],0x2000
+.ph_read:
+ mov eax,[read_lba]
+ mov bx,[load_segment]
+ call read_sector
+ inc dword [read_lba]
+ add word [load_segment],0x80
+ dec dword [remaining]
+ jnz .ph_read
+ mov dword [pm_command],1
+ call pm_call
+ mov ax,0x1800
+ mov fs,ax
+ mov eax,[ph_offset]
+ mov [ph_cursor],eax
+ movzx eax,word [fs:56]
+ mov [ph_count],eax
+.ph_loop:
+ mov ax,0x2000
+ mov fs,ax
+ mov si,[ph_cursor]
+ cmp dword [fs:si],1
+ jne .next_ph
+ mov eax,[fs:si+24]
+ mov [destination],eax
+ mov eax,[fs:si+32]
+ mov [remaining],eax
+ mov eax,[fs:si+8]
+ shr eax,11
+ add eax,[file_lba]
+ mov [read_lba],eax
+.chunk:
+ cmp dword [remaining],0
+ je .zero_bss
+ mov eax,[remaining]
+ cmp eax,32768
+ jbe .small
+ mov eax,32768
+.small:
+ mov [copy_count],eax
+ add eax,2047
+ shr eax,11
+ mov [chunk_sectors],eax
+ mov word [load_segment],0x1000
+.read_chunk:
+ mov eax,[read_lba]
+ mov bx,[load_segment]
+ call read_sector
+ inc dword [read_lba]
+ add word [load_segment],0x80
+ dec dword [chunk_sectors]
+ jnz .read_chunk
+ mov eax,[destination]
+ mov [0x6400],eax
+ mov dword [0x6404],0x10000
+ mov eax,[copy_count]
+ mov [0x6408],eax
+ mov dword [pm_command],2
+ call pm_call
+ mov eax,[copy_count]
+ add [destination],eax
+ sub [remaining],eax
+ jmp .chunk
+.zero_bss:
+ mov ax,0x2000
+ mov fs,ax
+ mov si,[ph_cursor]
+ mov eax,[destination]
+ mov [0x6400],eax
+ mov dword [0x6404],0
+ mov eax,[fs:si+40]
+ sub eax,[fs:si+32]
+ mov [0x6408],eax
+ mov dword [pm_command],2
+ call pm_call
+.next_ph:
+ add dword [ph_cursor],56
+ dec dword [ph_count]
+ jnz .ph_loop
+ mov al,'G'
+ call mark
+ mov dword [pm_command],3
+ call pm_call
+ ; Final call never returns: paging and long mode follow.
+ jmp fail
+pm_call:
  cli
+ mov [real_sp],sp
  lgdt [gdt_desc]
  mov eax,cr0
  or eax,1
@@ -262,7 +358,7 @@ fail:
  jmp .halt
 error_message: db 'BIOS:ERROR',10,0
 align 8
-gdt: dq 0,0x00cf9a000000ffff,0x00cf92000000ffff,0x00af9a000000ffff
+gdt: dq 0,0x00cf9a000000ffff,0x00cf92000000ffff,0x00af9a000000ffff,0x00009a000000ffff,0x000092000000ffff
 gdt_desc: dw $-gdt-1
  dd gdt
 mode: dw 0
@@ -270,7 +366,16 @@ chosen: dw 0
 drive: db 0
 align 4
 file_lba: dd 0
-sectors: dw 0
+ph_offset: dd 0
+ph_cursor: dd 0
+ph_count: dd 0
+read_lba: dd 0
+remaining: dd 0
+copy_count: dd 0
+chunk_sectors: dd 0
+destination: dd 0
+pm_command: dd 0
+real_sp: dw 0
 load_segment: dw 0
 dap: db 16,0
  dw 1,0,0
@@ -285,7 +390,11 @@ protected:
  mov gs,ax
  mov esp,0x6f000
  cld
+ push dword [pm_command]
  call 0xc000
+ add esp,4
+ cmp dword [pm_command],3
+ jne return_real
  mov edi,eax ; entry low 32 bits saved in EDI; high constant
  mov eax,cr4
  or eax,1<<5
@@ -300,6 +409,28 @@ protected:
  or eax,0x80010000
  mov cr0,eax
  jmp 24:long_mode
+return_real:
+ jmp 32:protected16
+bits 16
+protected16:
+ mov ax,40
+ mov ds,ax
+ mov es,ax
+ mov ss,ax
+ mov eax,cr0
+ and eax,0xfffffffe
+ mov cr0,eax
+ jmp 0:real_return
+real_return:
+ xor ax,ax
+ mov ds,ax
+ mov es,ax
+ mov fs,ax
+ mov gs,ax
+ mov ss,ax
+ mov sp,[real_sp]
+ sti
+ ret
 bits 64
 long_mode:
  mov ax,16

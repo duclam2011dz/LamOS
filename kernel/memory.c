@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "kernel.h"
 #include "alloc.h"
+#include "lamos_limits.h"
 #define FRAME_COUNT (1u << 20)
 #define ADDR_MASK UINT64_C(0x000ffffffffff000)
 #define NX (UINT64_C(1) << 63)
@@ -8,7 +9,7 @@ static uint8_t used[FRAME_COUNT / 8], eligible[FRAME_COUNT / 8];
 static struct FramePool pool;
 static struct Heap heap;
 static uint64_t root;
-uint64_t free_frames;
+uint64_t free_frames, managed_frames;
 extern char lamos_kernel_start[], lamos_kernel_end[], lamos_text_end[], lamos_rodata_end[];
 static void *physical(uint64_t a) {
     return (void *)(DIRECT + a);
@@ -113,6 +114,7 @@ void memory_init(const struct BootInfo *b) {
     pool_range(&pool, b->kernel_start, b->kernel_end - b->kernel_start, false);
     pool_range(&pool, b->loader_start, b->loader_end - b->loader_start, false);
     pool_range(&pool, b->fb.address, (uint64_t)b->fb.pitch * b->fb.height, false);
+    managed_frames = pool.free;
     root = new_table();
     uint64_t *r = physical(root);
     uint64_t pdpt = new_table();
@@ -147,13 +149,14 @@ void memory_init(const struct BootInfo *b) {
     __asm__ volatile("mov %0,%%cr0" ::"r"(cr0) : "memory");
     if (b->firmware == 1) {
         pool_range(&pool, b->loader_start, b->loader_end - b->loader_start, true);
+        managed_frames += (b->loader_end - b->loader_start) / 4096;
         free_frames = pool.free;
         print("BOOT:RECLAIMED UEFI arena and boot-services memory\n");
     }
     print("PMM:OK free_frames=%u limit=4GiB\n", free_frames);
     print("VMM:OK higher-half NX WP identity-removed\n");
     const uint64_t hv = UINT64_C(0xffffc00000000000);
-    const size_t hs = (size_t)8 * 1024 * 1024;
+    const size_t hs = LAMOS_HEAP_SIZE;
     for (size_t i = 0; i < hs; i += 4096) {
         uint64_t p = frame_alloc();
         if (!p || !vm_map(hv + i, p, NX | 2))
@@ -179,4 +182,8 @@ void memory_init(const struct BootInfo *b) {
     if (kmalloc(SIZE_MAX))
         PANIC("Heap overflow self-test");
     print("HEAP:OK split coalesce alignment allocation-tests\n");
+}
+
+struct HeapStats kernel_heap_stats(void) {
+    return heap_stats(&heap);
 }

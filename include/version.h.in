@@ -1,0 +1,5 @@
+/* Generated from VERSION; do not edit. */
+#ifndef LAMOS_VERSION_H
+#define LAMOS_VERSION_H
+#define LAMOS_VERSION "@LAMOS_VERSION@"
+#endif

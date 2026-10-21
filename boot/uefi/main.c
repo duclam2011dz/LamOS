@@ -2,6 +2,7 @@
 #include <efi.h>
 #include "boot.h"
 #include "elf.h"
+#include "lamos_limits.h"
 static EFI_SYSTEM_TABLE *system_table;
 static void serial(const char *s) {
     while (*s) {
@@ -26,7 +27,7 @@ void *memset(void *d, int c, size_t n) {
     return d;
 }
 extern void EFIAPI enter_kernel(uint64_t tables, uint64_t entry, uint64_t info, uint64_t stack);
-static __attribute__((aligned(16))) uint8_t file_buffer[512 * 1024];
+static __attribute__((aligned(16))) uint8_t file_buffer[LAMOS_ELF_LIMIT];
 static uint8_t map_buffer[64 * 1024];
 EFI_STATUS EFIAPI efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *st) {
     system_table = st;
@@ -55,6 +56,13 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *st) {
     UINTN length = sizeof(file_buffer);
     if (file->Read(file, &length, file_buffer))
         die("UEFI:READ\n");
+    /* A full buffer must not silently accept a prefix of an oversized ELF. */
+    UINTN remaining = 1;
+    uint8_t extra;
+    if (file->Read(file, &remaining, &extra))
+        die("UEFI:READ\n");
+    if (remaining)
+        die("UEFI:SIZE\n");
     file->Close(file);
     root->Close(root);
     uint8_t *e = file_buffer;
@@ -117,8 +125,8 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *st) {
         UINTN s;
         EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi = 0;
         if (!gop->QueryMode(gop, i, &s, &mi)) {
-            int preferred = mi->HorizontalResolution == 1024 && mi->VerticalResolution == 768 &&
-                            mi->PixelFormat < 2;
+            int preferred = mi->HorizontalResolution == VIDEO_WIDTH &&
+                            mi->VerticalResolution == VIDEO_HEIGHT && mi->PixelFormat < 2;
             bs->FreePool(mi);
             if (preferred) {
                 if (gop->SetMode(gop, i))

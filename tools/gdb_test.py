@@ -6,7 +6,7 @@ root=pathlib.Path(__file__).resolve().parents[1]
 out=root/'build/debug/test-results/gdb'
 out.mkdir(parents=True,exist_ok=True)
 with (out/'emulator.log').open('w') as log:
-    p=subprocess.Popen(['qemu-system-x86_64','-m','128M','-cdrom',str(root/'build/debug/LamOS.iso'),'-display','none','-serial',f'file:{out/"serial.log"}','-no-reboot','-no-shutdown','-S','-gdb','tcp:127.0.0.1:1234'],stdout=log,stderr=subprocess.STDOUT)
+    p=subprocess.Popen(['qemu-system-x86_64','-m','256M','-cdrom',str(root/'build/debug/LamOS.iso'),'-display','none','-serial',f'file:{out/"serial.log"}','-no-reboot','-no-shutdown','-S','-gdb','tcp:127.0.0.1:1234'],stdout=log,stderr=subprocess.STDOUT)
     try:
         result=subprocess.run(['gdb','-q','-batch',str(root/'build/debug/kernel.elf'),
           '-ex','set architecture i386:x86-64','-ex','target remote :1234',

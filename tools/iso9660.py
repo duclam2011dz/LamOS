@@ -22,7 +22,7 @@ def kernel_extent(data):
         if rec[33:33 + rec[32]] == b'KERNEL.ELF;1':
             lba = struct.unpack_from('<I', rec, 2)[0]
             size = struct.unpack_from('<I', rec, 10)[0]
-            if rec[25] & 0x82 or size < 64 or size > 0x50000 or lba * SECTOR + size > len(data):
+            if rec[25] & 0x82 or size < 64 or size > 0x400000 or lba * SECTOR + size > len(data):
                 raise ValueError('Unsupported or truncated kernel extent')
             return lba * SECTOR, size
         offset += size

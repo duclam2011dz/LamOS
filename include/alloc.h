@@ -22,8 +22,13 @@ struct Heap {
     void *start;
     size_t size;
     struct HeapBlock *first;
+    size_t allocations, used, peak;
 };
 void heap_init(struct Heap *, void *, size_t);
 void *heap_alloc(struct Heap *, size_t);
 bool heap_free(struct Heap *, const void *);
+struct HeapStats {
+    size_t allocations, used, free, peak, largest;
+};
+struct HeapStats heap_stats(const struct Heap *);
 #endif

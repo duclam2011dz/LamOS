@@ -35,7 +35,7 @@ Framebuffer fields, relative to offset 32:
 | 28, 29 | blue shift and bit count, u8 |
 | 30 | two padding bytes |
 
-Pixels are packed little-endian 24/32-bit RGB with explicit channel positions. The kernel validates bounds before memory initialization, honors pitch and converts its RGB backbuffer to this layout. The tested mode is 1024×768×32. UEFI supports the GOP RGB/BGR byte layouts, not PixelBltOnly or arbitrary PixelBitMask modes in v1.
+Pixels are packed little-endian 24/32-bit RGB with explicit channel positions. The kernel validates bounds before memory initialization, honors pitch and converts its RGB backbuffer to this layout. The default preference is 1024×768×32; build-time VIDEO_WIDTH, VIDEO_HEIGHT and VIDEO_BPP select test preferences. UEFI supports the GOP RGB/BGR byte layouts, not PixelBltOnly or arbitrary PixelBitMask modes in v1.
 
 ## CPU entry contract
 
@@ -56,7 +56,10 @@ Pixels are packed little-endian 24/32-bit RGB with explicit channel positions. T
 | `0x6000–0x63ff` | VBE controller/mode scratch |
 | `0x7c00–0x7fff` | Stage 1 and real-mode stack vicinity |
 | `0x8000–0xffff` | Stage 2; C helper linked at `0xc000` |
-| `0x10000–0x5ffff` | ELF read buffer, maximum 320 KiB |
+| `0x6400` | Protected-mode copy job: destination, source, count |
+| `0x10000–0x17fff` | 32 KiB streaming payload bounce buffer |
+| `0x18000–0x187ff` | ELF header sector |
+| `0x20000–0x20fff` | Program-header sectors, including sector-boundary overlap |
 | `0x60000–0x6ffff` | Protected/long-mode handoff stack region |
 | `0x70000–0x76fff` | Seven initial page-table pages |
 | `0x100000+` | Loaded kernel segments |
@@ -65,7 +68,7 @@ The kernel keeps the first MiB reserved. Bootstrap pages are not reused as gener
 
 ## ISO layout
 
-The ISO9660 root contains `KERNEL.ELF;1`. BIOS reads the primary volume descriptor at CD LBA 16, follows its root extent and searches the one-sector root directory. Only a contiguous, non-multiextent kernel file is supported. Packaging verifies this layout and kernel extent bounds.
+The ISO9660 root contains `KERNEL.ELF;1`. BIOS reads the primary volume descriptor at CD LBA 16, follows its root extent and searches the one-sector root directory. Only a contiguous, non-multiextent kernel file is supported. Packaging verifies this layout and kernel extent bounds. ELF files may contain at most 4 MiB. The BIOS loader reads header/program metadata separately, validates all segments before copying and streams sector-aligned PT_LOAD data in chunks of at most 32 KiB. The copy helper enters flat protected mode for high-memory access, then returns through 16-bit descriptors to the saved real-mode stack. It zeroes each BSS tail explicitly; the full ELF is never buffered in conventional memory. UEFI applies the same ELF validation and file-size ceiling.
 
 `/boot/bios.img` contains one Stage 1 CD sector followed by sixteen Stage 2 sectors. The BIOS El Torito entry loads four 512-byte units (one CD sector). xorriso patches Stage 1's boot-info table, including boot-image LBA at byte 12; Stage 1 uses `LBA + 1` for Stage 2.
 

@@ -16,7 +16,7 @@ struct ElfProgram {
     uint32_t type, flags;
     uint64_t offset, vaddr, paddr, filesz, memsz, align;
 };
-static inline bool elf_valid(const void *data, size_t size) {
+static inline bool elf_header_valid(const void *data, size_t size) {
     if (size < sizeof(struct ElfHeader))
         return false;
     const struct ElfHeader *h = data;
@@ -25,7 +25,10 @@ static inline bool elf_valid(const void *data, size_t size) {
         h->machine != 62 || h->version != 1 || h->ehsize != 64 || h->phentsize != 56 || !h->phnum ||
         h->phnum > 32 || h->phoff > size || h->phnum * 56 > size - h->phoff || h->phoff % 8)
         return false;
-    const struct ElfProgram *p = (const void *)((const uint8_t *)data + (size_t)h->phoff);
+    return true;
+}
+static inline bool elf_programs_valid(const struct ElfHeader *h, const struct ElfProgram *p,
+                                      size_t size) {
     bool entry = false;
     for (unsigned i = 0; i < h->phnum; i++) {
         if (p[i].type == 2 || p[i].type == 3)
@@ -47,5 +50,11 @@ static inline bool elf_valid(const void *data, size_t size) {
                 return false;
     }
     return entry;
+}
+static inline bool elf_valid(const void *data, size_t size) {
+    if (!elf_header_valid(data, size))
+        return false;
+    const struct ElfHeader *h = data;
+    return elf_programs_valid(h, (const void *)((const uint8_t *)data + (size_t)h->phoff), size);
 }
 #endif

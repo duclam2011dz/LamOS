@@ -13,33 +13,33 @@ static void stop(void) {
     for (;;)
         __asm__ volatile("cli; hlt");
 }
-uint32_t load(void) {
+uint32_t load(uint32_t command) {
     struct BootInfo *b = (void *)0x5000;
-    const uint8_t *elf = (void *)0x10000;
-    if (!elf_valid(elf, (size_t)b->kernel_file_size))
-        stop();
-    uint64_t phoff = *(const uint64_t *)(elf + 32), entry = *(const uint64_t *)(elf + 24);
-    uint16_t n = *(const uint16_t *)(elf + 56);
-    if (phoff > 0x40000 || n > 32 || *(const uint16_t *)(elf + 54) != 56)
-        stop();
-    b->kernel_start = 0x100000;
-    b->kernel_end = 0x100000;
-    for (unsigned i = 0; i < n; i++) {
-        const uint8_t *p = elf + (uint32_t)phoff + i * 56;
-        if (*(const uint32_t *)p != 1)
-            continue;
-        uint64_t off = *(const uint64_t *)(p + 8), v = *(const uint64_t *)(p + 16),
-                 a = *(const uint64_t *)(p + 24), f = *(const uint64_t *)(p + 32),
-                 m = *(const uint64_t *)(p + 40);
-        if (a < 0x100000 || a + m > 0x2000000 || m < f || off + f > 0x50000 || v != KBASE + a)
+    const struct ElfHeader *h = (void *)0x18000;
+    const struct ElfProgram *programs = (void *)(0x20000 + ((uint32_t)h->phoff & 2047));
+    if (command == 0) {
+        if (!elf_header_valid(h, (size_t)b->kernel_file_size))
             stop();
-        for (uint32_t j = 0; j < (uint32_t)m; j++)
-            ((uint8_t *)(uint32_t)a)[j] = j < f ? elf[(uint32_t)off + j] : 0;
-        if (a + m > b->kernel_end)
-            b->kernel_end = a + m;
+        return 1;
     }
-    if (entry < KBASE + b->kernel_start || entry >= KBASE + b->kernel_end)
-        stop();
+    if (command == 1) {
+        if (!elf_programs_valid(h, programs, (size_t)b->kernel_file_size))
+            stop();
+        b->kernel_start = 0x100000;
+        b->kernel_end = 0x100000;
+        for (unsigned i = 0; i < h->phnum; i++)
+            if (programs[i].type == 1 && programs[i].paddr + programs[i].memsz > b->kernel_end)
+                b->kernel_end = programs[i].paddr + programs[i].memsz;
+        return 1;
+    }
+    if (command == 2) {
+        volatile uint32_t *job = (void *)0x6400;
+        uint8_t *dst = (void *)job[0];
+        const uint8_t *src = (void *)job[1];
+        for (uint32_t i = 0; i < job[2]; i++)
+            dst[i] = src ? src[i] : 0;
+        return 1;
+    }
     for (unsigned i = 0; i < b->map_count; i++)
         if (b->map[i].type != 1)
             b->map[i].type = 2;
@@ -65,5 +65,5 @@ uint32_t load(void) {
     b->stack_end = 0x70000;
     b->tables_start = 0x70000;
     b->tables_end = 0x77000;
-    return (uint32_t)entry;
+    return (uint32_t)h->entry;
 }

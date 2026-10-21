@@ -2,6 +2,7 @@
 #ifndef LAMOS_KERNEL_H
 #define LAMOS_KERNEL_H
 #include "boot.h"
+#include "alloc.h"
 #include <stdbool.h>
 #include <stdarg.h>
 static inline void outb(uint16_t p, uint8_t v) {
@@ -42,10 +43,13 @@ uint64_t vm_query(uint64_t);
 void vm_unmap(uint64_t);
 void *kmalloc(size_t);
 void kfree(void *);
+struct HeapStats kernel_heap_stats(void);
 void graphics_init(const struct Framebuffer *);
 void ui_draw(uint64_t, uint64_t, const char *, int, int, unsigned);
 void graphics_present(void);
 void fault_test(void);
-extern uint64_t free_frames;
+struct Gui;
+struct Gui *kernel_gui(void);
+extern uint64_t free_frames, managed_frames;
 extern struct BootInfo boot_info;
 #endif

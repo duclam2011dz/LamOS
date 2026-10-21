@@ -24,7 +24,7 @@ def main():
         out=build/'test-results'/args.machine
         out.mkdir(parents=True,exist_ok=True)
         serial=out/'serial.log';serial.write_text('')
-        cmd=['qemu-system-x86_64','-m','128M','-cdrom',str(build/'LamOS.iso'),'-display','none','-serial',f'file:{serial}','-no-reboot','-no-shutdown']
+        cmd=['qemu-system-x86_64','-m','256M','-cdrom',str(build/'LamOS.iso'),'-display','none','-serial',f'file:{serial}','-no-reboot','-no-shutdown']
         if args.machine=='uefi':cmd+=['-bios','/usr/share/OVMF/OVMF_CODE.fd']
         with (out/'emulator.log').open('w') as log:
             p=subprocess.Popen(cmd,stdout=log,stderr=subprocess.STDOUT)

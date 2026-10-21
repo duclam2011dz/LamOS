@@ -1,16 +1,21 @@
 cmake_minimum_required(VERSION 3.22)
 set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/x86_64-elf.cmake" CACHE FILEPATH "Cross toolchain")
-project(LamOS VERSION 1.0.0 LANGUAGES C)
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" LAMOS_VERSION LIMIT_COUNT 1)
+project(LamOS VERSION ${LAMOS_VERSION} LANGUAGES C)
+configure_file(include/version.h.in generated/version.h @ONLY)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 set(FAULT "none" CACHE STRING "Isolated fault-injection scenario")
-set_property(CACHE FAULT PROPERTY STRINGS none panic divide opcode page double ubsan write nx)
+set_property(CACHE FAULT PROPERTY STRINGS none panic divide opcode page double ubsan write nx graphics)
 option(UBSAN "Instrument kernel with UBSan" OFF)
 if(FAULT STREQUAL "ubsan" AND NOT UBSAN)
     message(FATAL_ERROR "The UBSan fault requires -DUBSAN=ON")
 endif()
+set(VIDEO_WIDTH 1024 CACHE STRING "Preferred framebuffer width")
+set(VIDEO_HEIGHT 768 CACHE STRING "Preferred framebuffer height")
+set(VIDEO_BPP 32 CACHE STRING "Preferred BIOS pixel depth")
 find_program(NASM nasm REQUIRED)
 find_program(HOST_CC gcc REQUIRED)
 find_program(PYTHON python3 REQUIRED)
@@ -26,7 +31,7 @@ add_executable(kernel.elf ${ARCH_OBJECTS}
     kernel/main.c kernel/log.c kernel/arch.c kernel/memory.c kernel/input.c
     kernel/graphics.c kernel/fault.c kernel/ubsan.c
     lib/string.c lib/alloc.c lib/input.c lib/graphics.c)
-target_include_directories(kernel.elf PRIVATE include)
+target_include_directories(kernel.elf PRIVATE include ${CMAKE_BINARY_DIR}/generated)
 target_compile_options(kernel.elf PRIVATE
     -ffreestanding -fno-stack-protector -fno-pie -fno-builtin -fno-omit-frame-pointer
     -mno-red-zone -mgeneral-regs-only -mcmodel=kernel -Wall -Wextra -Werror -g)
@@ -48,23 +53,23 @@ add_custom_command(OUTPUT loader32.bin
         -c ${CMAKE_SOURCE_DIR}/boot/bios/loader.c -o loader32.o
     COMMAND x86_64-elf-ld -m elf_i386 -T ${CMAKE_SOURCE_DIR}/boot/bios/link.ld loader32.o -o loader32.elf
     COMMAND x86_64-elf-objcopy -O binary loader32.elf loader32.bin
-    DEPENDS boot/bios/loader.c boot/bios/link.ld include/boot.h include/elf.h VERBATIM)
+    DEPENDS boot/bios/loader.c boot/bios/link.ld include/boot.h include/elf.h include/lamos_limits.h VERBATIM)
 add_custom_command(OUTPUT stage1.bin
     COMMAND ${NASM} -f bin ${CMAKE_SOURCE_DIR}/boot/bios/stage1.asm -o stage1.bin
     DEPENDS boot/bios/stage1.asm VERBATIM)
 add_custom_command(OUTPUT stage2.bin
-    COMMAND ${NASM} -f bin -I${CMAKE_BINARY_DIR}/ ${CMAKE_SOURCE_DIR}/boot/bios/stage2.asm -o stage2.bin
+    COMMAND ${NASM} -f bin -DVIDEO_WIDTH=${VIDEO_WIDTH} -DVIDEO_HEIGHT=${VIDEO_HEIGHT} -DVIDEO_BPP=${VIDEO_BPP} -I${CMAKE_BINARY_DIR}/ ${CMAKE_SOURCE_DIR}/boot/bios/stage2.asm -o stage2.bin
     DEPENDS boot/bios/stage2.asm loader32.bin VERBATIM)
 set(EFI_INCLUDE "${CMAKE_SOURCE_DIR}/.tools/root/usr/include/efi" CACHE PATH "GNU-EFI headers (no library linked)")
 add_custom_command(OUTPUT BOOTX64.EFI
     COMMAND clang -target x86_64-pc-win32-coff -ffreestanding -fshort-wchar -mno-red-zone
-        -fno-stack-protector -fno-builtin -DGNU_EFI_USE_MS_ABI
+        -fno-stack-protector -fno-builtin -DGNU_EFI_USE_MS_ABI -DVIDEO_WIDTH=${VIDEO_WIDTH} -DVIDEO_HEIGHT=${VIDEO_HEIGHT}
         -I${EFI_INCLUDE} -I${EFI_INCLUDE}/x86_64 -I${CMAKE_SOURCE_DIR}/include
         -Wall -Wextra -Werror -c ${CMAKE_SOURCE_DIR}/boot/uefi/main.c -o uefi.obj
     COMMAND ${NASM} -f win64 ${CMAKE_SOURCE_DIR}/boot/uefi/entry.asm -o uefi-entry.obj
     COMMAND lld-link /subsystem:efi_application /entry:efi_main /nodefaultlib /machine:x64
         /out:BOOTX64.EFI uefi.obj uefi-entry.obj
-    DEPENDS boot/uefi/main.c boot/uefi/entry.asm include/boot.h include/elf.h VERBATIM)
+    DEPENDS boot/uefi/main.c boot/uefi/entry.asm include/boot.h include/elf.h include/lamos_limits.h VERBATIM)
 add_custom_command(OUTPUT LamOS.iso
     COMMAND ${PYTHON} ${CMAKE_SOURCE_DIR}/tools/image.py ${CMAKE_BINARY_DIR}
     DEPENDS kernel.elf stage1.bin stage2.bin BOOTX64.EFI tools/image.py tools/iso9660.py VERBATIM)
