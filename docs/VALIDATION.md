@@ -1,66 +1,51 @@
-# LamOS 1.0.0 validation report
+# LamOS 1.0.3 validation report
 
-Release validation completed on **2026-10-20 (Asia/Saigon)** using the workspace's Ubuntu 22.04 development environment. This report records executed checks, not proposed support for physical machines.
+Release acceptance completed on **2026-10-21 (Asia/Ho_Chi_Minh)** in the Ubuntu 22.04 development environment. This report records executed emulator/host checks. It does not establish physical-hardware or USB-boot support.
 
-## Normal boot and interaction matrix
+## Normal GUI matrix
 
-All nine configurations passed the complete automated boot, keyboard, mouse and framebuffer checks:
+All nine artifact-bound configurations passed at **256 MiB RAM**, with the **128 MiB heap** and 1024×768×32 guest framebuffer:
 
-| Kernel preset | QEMU BIOS | QEMU UEFI / OVMF | Bochs BIOS / patched RFB |
-| --- | --- | --- | --- |
-| Debug | PASS | PASS | PASS |
-| Release | PASS | PASS | PASS |
-| UBSan | PASS | PASS | PASS |
+| Preset | Machine | Stress host seconds | Completed cycles | Result |
+| --- | --- | ---: | ---: | --- |
+| debug | bios | 63.4 | 16 | PASS |
+| release | bios | 65.6 | 17 | PASS |
+| ubsan | bios | 65.7 | 15 | PASS |
+| debug | uefi | 65.2 | 17 | PASS |
+| release | uefi | 65.2 | 17 | PASS |
+| ubsan | uefi | 63.1 | 15 | PASS |
+| debug | bochs | 77.9 | 2 | PASS |
+| release | bochs | 66.8 | 3 | PASS |
+| ubsan | bochs | 113.1 | 2 | PASS |
 
-Every configuration reached `READY:LamOS` with BootInfo, serial, GDT/IDT/TSS, PMM/VMM/heap, real timer ticks, keyboard, framebuffer and mouse milestones. There were no unexpected kernel panics or UBSan reports during normal tests. UEFI also reported post-handoff arena/Boot Services reclamation.
+Each run booted into an empty desktop, reached all foundation markers, opened Terminal and executed all five commands, edited/history/scrolled input, opened Folder/Settings, changed theme/background/profiling, switched focus, previewed/committed move and resize, minimized/maximized/restored and closed windows. Input was delivered through real emulator RFB keyboard/PS/2 paths. Terminal glyphs were decoded from actual framebuffer pixels; serial markers alone were not accepted as graphics evidence.
 
-Actual PS/2 input paths were exercised through emulator RFB input: Shift+A, typing, Backspace, Enter submission, key release, mouse movement and button press/release. Rendered `A` and `LAMOS` glyph pixels were checked before screenshots were accepted. The mouse test waited for the visible button indicator to turn green.
+Every stress run used the host monotonic clock for at least 60 seconds. After create/resize/command/destroy cycles, live allocation count, used bytes, largest free block and PMM free frames exactly matched that run's empty-desktop baseline. The retained compositor owns three allocations (9,437,184 used bytes at this resolution). The final demonstration screenshot opens a fresh Terminal after the leak checkpoint.
 
-Guest framebuffer size was 1024×768×32 on all three boot paths. Bochs RFB screenshots are 1024×818 because they include its 32-pixel header and 18-pixel status bar; the host stream is quantized to BGR233. Final release screenshots from all three machines were visually inspected: labels, entered text, cursor, uptime and memory status were visible without framebuffer corruption.
+The public `acceptance.json` includes ISO/kernel SHA-256 hashes, per-run memory checkpoints and frame profiling samples. Local evidence is under `build/<preset>/test-results/<machine>/`: serial/emulator logs, result JSON, PNG/PPM screenshots and `profile.log`. Profiles contain sample count, mean, rolling-128 p95, maximum, render/composite/present costs and dirty pixels/rectangles. These are emulator measurements; no absolute Bochs FPS minimum is claimed.
 
-## Memory and fault evidence
+## Host, loader and layout gates
 
-Host allocator tests verified reserved/overlapping/partial ranges, unique allocations, exhaustion, invalid/double free rejection, heap alignment and split/coalesce behavior. Kernel self-tests verified a mapped frame could be written, queried, unmapped and freed. The direct text alias is read-only/NX and the higher-half kernel uses segment-specific permissions.
+- Eight CTest suites passed in each normal preset: allocator/input/ELF, ISO, Surface, resources, compositor, window manager, Terminal/shell and GUI stress.
+- Host GUI tests ran with ASan/UBSan, exercised three display sizes and executed 10,000 deterministic operations including lifecycle/focus/geometry, allocation-failure injection and input recovery. Canary, clipping, stride padding, overlapping copy, alpha, stale handles, damage overflow, history/scrollback bounds and exact allocation accounting passed.
+- LeakSanitizer thread enumeration is disabled for this restricted/ptraced runner. ASan bounds checks remain active; exact tracked allocation counts/bytes plus real kernel heap/frame restoration provide the leak gates.
+- All 11 loader cases passed: streamed payloads relocated beyond 512 KiB, a sector-crossing program table, explicit pre-kernel `BSS:OK`, malformed/truncated ELF rejection, exactly 4 MiB acceptance and larger-file rejection on BIOS/UEFI, plus BIOS physical short-read failure. The oversized negative image was also rejected by image validation.
+- All 5 layout/depth cases passed: 640×480 and 1280×1024 on QEMU BIOS/UEFI, plus 1024×768×24 on QEMU BIOS. Each checked rendered Terminal output. Host layout tests covered 640×480, 1024×768 and 1280×1024.
 
-Eight isolated fault cases passed on each QEMU firmware path, **16/16 total**:
+## Diagnostics and tool gates
 
-- Explicit source-aware panic.
-- Divide error and invalid opcode exception dumps.
-- Page fault including CR2/access decoding.
-- Double fault after stack invalidation, handled through the dedicated IST stack.
-- Instrumented signed overflow reporting `UBSAN:add_overflow` with source position before panic.
-- Present/write fault on kernel text.
-- Instruction-fetch fault on an NX heap page.
+All **16** preserved BIOS/UEFI fault checks passed: explicit panic, divide, invalid opcode, page fault, double fault/IST, UBSan overflow, read-only write and NX execution. Their harnesses verified expected diagnostics, a single entry and a halted guest rather than reboot. Two additional post-GUI panic tests verified the red framebuffer through RFB pixels.
 
-Fault tests observed the expected diagnostics, a single kernel entry and a halted guest without reboot. The graphics panic code is implemented; these deliberate fault cases run before graphics initialization and therefore validate its serial/exception path rather than a rendered panic screen.
+GDB verified a hardware breakpoint at BIOS `kmain`, source symbols and BootInfo magic/version. clang-format, clang-tidy, cppcheck and clangd kernel parsing passed. The kernel linked without unresolved symbols, including GCC UBSan handlers. Suppressions and emulator patches are explained in `docs/TOOLCHAIN.md`.
 
-## Build, analysis and developer tools
+## Visual review and reproducibility
 
-- Debug/release/UBSan CMake+Ninja builds completed; both ISO kernel copies matched the built ELF byte-for-byte.
-- CTest passed host-library and actual-ISO malformed-input tests for every normal preset. Host C tests ran under GCC's UBSan runtime.
-- clang-format, clang-tidy and cppcheck passed with the documented narrowly scoped exceptions.
-- clangd checked the kernel entry translation unit with **0 errors** using the wrapper/resource configuration.
-- GDB stopped at a hardware breakpoint at `kmain` and read `magic=0x314f534f4d414c`, `version=1` through BootInfo debug types and entry register RDI. The parameter's stack location is not initialized until the C prologue executes; inspect `$rdi` or step past the prologue at this breakpoint.
-- The final verification script completed with `LAMOS ACCEPTANCE:PASS`.
+Final release desktop screenshots from QEMU BIOS, QEMU UEFI and Bochs were visually reviewed, along with Settings, the 640×480 layout and the 24-bit presentation path. Text, controls, layering and cursor were visible without framebuffer corruption. Bochs uses the pinned, patched RFB backend: its screenshots include a 32-pixel header and 18-pixel status bar and BGR233 color quantization, while the guest remains 32-bit.
 
-## Evidence and artifacts
+Run `. tools/env.sh`, then `python3 tools/verify.py` to repeat all gates. `--resume` reuses only passing >=60-second normal runs with unchanged ISO/ELF hashes. `python3 tools/package.py` refuses stale or incomplete acceptance and creates the source archive, release metadata and checksums.
 
-Generated evidence is retained locally, excluded from source control:
+The verified original v1.0.0 source archive was preserved before changes. Its SHA-256 is `f815e57bb2893d0ba8d23520fbff1034348e9d568f347f31893acea7a152d007`. The baseline tag preserves its source history; this checksum identifies the original local archive, not GitHub's automatically generated tarball.
 
-| Location | Contents |
-| --- | --- |
-| `build/verification.log` | Complete final build/test transcript |
-| `build/acceptance.json` | Normal matrix summary |
-| `build/<preset>/test-results/<machine>/` | Result JSON, serial/emulator logs and PNG/PPM screenshots |
-| `build/fault-*/test-results/{bios,uefi}/` | Fault diagnostics and per-case results |
-| `build/fault-results-{bios,uefi}.json` | Aggregate fault results |
-| `build/debug/test-results/gdb/gdb.log` | GDB breakpoint/type/register transcript |
-| `build/debug/static-analysis.log` | Formatting/static-analysis transcript |
-| `build/debug/clangd-check.log` | clangd validation transcript |
-| `build/release/` | Release ISO, symbolic ELF, source archive, licenses and checksums |
+## Remaining limits
 
-`tools/package.py` creates `LamOS-1.0.0-source.tar.gz`, copies notices and writes release metadata/SHA256SUMS after successful acceptance. The source archive excludes downloaded tools, build outputs and workspace account/config directories. Artifacts are local; no repository push, external publishing or hardware installation was performed.
-
-## Remaining compatibility limits
-
-Acceptance covers the documented emulator configurations only. Physical machines, Secure Boot, USB boot/input, SMP/APIC, applications/user mode and arbitrary GOP bitmask modes remain outside v1 support. The unmodified Bochs RFB plugin cannot supply the required guest pixel depths; its visible source patch is necessary for this test configuration. Intermediate page tables remain allocated, the heap is fixed at 8 MiB, managed physical memory is below 4 GiB, and the input queue is bounded rather than lossless under overload.
+All GUI execution is inside a single-CPU ring-0 kernel. There are no independent applications, processes, syscalls, kernel filesystem, USB stack, network or audio services. Folder contains embedded read-only resources. Settings persist only in RAM. Input is US QWERTY printable ASCII with a three-button PS/2 mouse. UEFI supports GOP RGB/BGR byte layouts with Secure Boot disabled. Physical computers, USB ISO boot, arbitrary GOP bit masks and alternate Bochs resolutions remain unvalidated. PMM stays below 4 GiB; intermediate page tables remain allocated for the kernel lifetime.

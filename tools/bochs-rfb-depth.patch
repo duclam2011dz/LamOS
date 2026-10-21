@@ -1,8 +1,17 @@
 diff --git a/bochs/gui/rfb.cc b/bochs/gui/rfb.cc
-index 1381429..27c0978 100644
+index 1381429..192eb39 100644
 --- a/bochs/gui/rfb.cc
 +++ b/bochs/gui/rfb.cc
-@@ -432,7 +432,7 @@ void bx_rfb_gui_c::graphics_tile_update(Bit8u *tile, unsigned x0, unsigned y0)
+@@ -34,6 +34,8 @@
+ // is used to know when we are exporting symbols and when we are importing.
+ #define BX_PLUGGABLE
+ 
++#include <mutex>
++static std::recursive_mutex rfb_output_mutex;
+ #include "param_names.h"
+ #include "iodev.h"
+ #include "keymap.h"
+@@ -432,7 +434,7 @@ void bx_rfb_gui_c::graphics_tile_update(Bit8u *tile, unsigned x0, unsigned y0)
  
  void bx_rfb_gui_c::dimension_update(unsigned x, unsigned y, unsigned fheight, unsigned fwidth, unsigned bpp)
  {
@@ -11,7 +20,7 @@ index 1381429..27c0978 100644
      guest_bpp = bpp;
    } else {
      BX_PANIC(("%d bpp graphics mode not supported yet", bpp));
-@@ -638,7 +638,7 @@ void bx_rfb_gui_c::get_capabilities(Bit16u *xres, Bit16u *yres, Bit16u *bpp)
+@@ -638,7 +640,7 @@ void bx_rfb_gui_c::get_capabilities(Bit16u *xres, Bit16u *yres, Bit16u *bpp)
      *xres = BX_RFB_DEF_XDIM;
      *yres = BX_RFB_DEF_YDIM;
    }
@@ -20,3 +29,19 @@ index 1381429..27c0978 100644
  }
  
  void bx_rfb_gui_c::statusbar_setitem_specific(int element, bool active, bool w)
+@@ -1545,6 +1547,7 @@ void DrawChar(int x, int y, int width, int height, int fontx, int fonty,
+ void UpdateScreen(unsigned char *newBits, int x, int y, int width, int height,
+                   bool update_client)
+ {
++  std::lock_guard<std::recursive_mutex> lock(rfb_output_mutex);
+   int i, x0, y0;
+   x0 = x;
+   y0 = y;
+@@ -1577,6 +1580,7 @@ void UpdateScreen(unsigned char *newBits, int x, int y, int width, int height,
+ 
+ void SendUpdate(int x, int y, int width, int height, Bit32u encoding)
+ {
++    std::lock_guard<std::recursive_mutex> lock(rfb_output_mutex);
+     char *newBits;
+ 
+     if(x < 0 || y < 0 || (x + width) > (int)rfbWindowX || (y + height) > (int)rfbWindowY) {

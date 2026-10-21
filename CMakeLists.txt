@@ -117,3 +117,17 @@ add_custom_command(OUTPUT terminal-tests
 add_custom_target(terminal-tests-build ALL DEPENDS terminal-tests)
 add_test(NAME terminal-unit COMMAND ${CMAKE_BINARY_DIR}/terminal-tests)
 target_sources(kernel.elf PRIVATE lib/gui.c)
+set(GUI_LIBRARY_SOURCES lib/surface.c lib/resources.c lib/compositor.c lib/wm.c lib/terminal.c lib/shell.c lib/gui.c)
+file(GLOB GUI_HEADERS CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/include/*.h")
+set(GUI_HOST_SOURCES)
+foreach(source IN LISTS GUI_LIBRARY_SOURCES)
+ list(APPEND GUI_HOST_SOURCES ${CMAKE_SOURCE_DIR}/${source})
+endforeach()
+add_custom_command(OUTPUT gui-tests
+ COMMAND ${HOST_CC} -O1 -std=c17 -Wall -Wextra -Werror -g -fsanitize=address,undefined -fno-sanitize-recover=all -I${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/tests/gui.c ${GUI_HOST_SOURCES} -o gui-tests
+ DEPENDS tests/gui.c ${GUI_LIBRARY_SOURCES} ${GUI_HEADERS} lib/font_data.inc VERBATIM)
+add_custom_target(gui-tests-build ALL DEPENDS gui-tests)
+add_test(NAME gui-stress COMMAND ${CMAKE_BINARY_DIR}/gui-tests)
+# LeakSanitizer cannot enumerate threads in restricted/ptraced runners. The
+# stress allocator checks exact live bytes/counts; ASan bounds checks stay on.
+set_tests_properties(gui-stress PROPERTIES ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0")

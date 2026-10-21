@@ -14,7 +14,7 @@
 | cppcheck 2.7 | Additional C checks using its supported C11 grammar |
 | QEMU / SeaBIOS / OVMF | BIOS and UEFI acceptance |
 | Bochs 2.7 with local RFB patch | Independent BIOS acceptance and input/screenshot tests |
-| GCC UBSan | Host runtime and freestanding kernel instrumentation |
+| GCC ASan / UBSan | Host GUI bounds checks and freestanding kernel undefined-behavior instrumentation |
 | xorriso / mtools / Python 3 | ISO, FAT ESP, checksums and test harnesses |
 
 The cross compiler must support `-m32` code generation and binutils must support `elf_i386`. The BIOS helper does not link a 32-bit C runtime. A native system GCC cannot replace the kernel cross compiler.
@@ -32,7 +32,7 @@ If GNU-EFI headers are installed system-wide, pass `-DEFI_INCLUDE=/usr/include/e
 
 ## Bochs RFB compatibility
 
-Upstream Bochs 2.7 RFB advertises only 8-bit guest modes and rejects 24/32-bit `dimension_update` calls. This prevents VBE from offering the required framebuffer modes. `tools/bochs-rfb-depth.patch` changes only those two guards: guest 24/32-bit mode is accepted and the advertised maximum is 32. The existing new-graphics API converts guest RGB pixels to the RFB server's 8-bit BGR233 representation. This is a test-display compatibility patch, not LamOS graphics code.
+Upstream Bochs 2.7 RFB advertises only 8-bit guest modes and rejects 24/32-bit `dimension_update` calls. This prevents VBE from offering the required framebuffer modes. `tools/bochs-rfb-depth.patch` updates these depth guards: guest 24/32-bit mode is accepted and the advertised maximum is 32. It also serializes output packets as described below. The existing new-graphics API converts guest RGB pixels to the RFB server's 8-bit BGR233 representation. This is a test-display compatibility patch, not LamOS graphics code.
 
 Bootstrap pins Bochs commit `0e45b736ef9792eb9b752b0a35db49eaf2faea47` (`REL_2_7_FINAL`), applies the visible patch and builds a local executable. Tests advertise RFB desktop-size updates so 1024×768 is available. Screenshots include Bochs's 32-pixel header and status bar, with reduced host color depth. The guest framebuffer remains 32-bit.
 
@@ -59,4 +59,13 @@ QEMU stops at reset for GDB; use a hardware breakpoint if debugging before kerne
 - GCC-mandated UBSan handler names are allowed reserved identifiers in that runtime only.
 - Clang 14's false-positive varargs initialization diagnostic is suppressed within the logger; `va_start`/`va_end` are explicit and exercised across firmware tests.
 - The intentional signed-overflow expression in the isolated UBSan fault is suppressed for cppcheck only.
+- cppcheck variable-scope suggestions are suppressed for CPUID output variables because its inline-assembly analysis does not see their uses.
 - cppcheck uses a no-return declaration for panic and omits missing host/system-header reports; its C11 grammar is sufficient for the project's C17 sources.
+
+## RFB output serialization
+
+The pinned Bochs RFB patch also serializes whole update packets with a recursive mutex. Headerbar updates triggered by the RFB input thread must not interleave with framebuffer updates on the emulation thread. The patch changes emulator display transport only; guest PS/2 drivers remain exercised. Test mouse delivery waits for guest semantic feedback because host/emulated time progresses at different rates.
+
+## Version and display configuration
+
+`VERSION` supplies CMake metadata, generated kernel version, shell information, validation metadata and release filenames. Alternate test builds use `-DVIDEO_WIDTH=640 -DVIDEO_HEIGHT=480` or `1280/1024`; BIOS also accepts `-DVIDEO_BPP=24`. Defaults remain 1024×768×32. All run/debug/fault tools allocate 256 MiB guest RAM.
