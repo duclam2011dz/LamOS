@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "kernel.h"
 #include "input.h"
+#include "gui.h"
 struct BootInfo boot_info;
 void kmain(const struct BootInfo *b) {
     serial_init();
@@ -34,58 +35,34 @@ void kmain(const struct BootInfo *b) {
     input_init();
     graphics_init(&boot_info.fb);
     mouse_init();
-    char input[80] = {0};
-    size_t length = 0;
-    int mx = 100, my = 100;
-    unsigned buttons = 0;
-    uint64_t painted = UINT64_MAX;
+    struct Gui *gui = kernel_gui();
+#if defined(FAULT_graphics)
+    PANIC("Injected graphics panic");
+#endif
     print("READY:LamOS\n");
+    uint64_t next_frame = timer_ticks(), handled_drop = 0;
+    unsigned remainder = 0;
     for (;;) {
-        struct Event e;
-        bool changed = false;
-        while (input_next(&e)) {
-            changed = true;
-            if (e.type == TEXT_INPUT) {
-                if (e.text == '\b') {
-                    if (length)
-                        input[--length] = 0;
-                } else if (e.text == '\n') {
-                    print("INPUT:SUBMIT %s\n", input);
-                    length = 0;
-                    input[0] = 0;
-                } else if (e.text >= ' ' && length < sizeof(input) - 1) {
-                    input[length++] = e.text;
-                    input[length] = 0;
-                }
-                print("INPUT:TEXT code=%u buffer=%s\n", (uint64_t)(uint8_t)e.text, input);
-            } else if (e.type == KEY_DOWN || e.type == KEY_UP)
-                print("INPUT:KEY type=%u code=%u\n", (uint64_t)e.type, (uint64_t)e.code);
-            else {
-                mx += e.dx;
-                my += e.dy;
-                if (mx < 0)
-                    mx = 0;
-                if (my < 0)
-                    my = 0;
-                if (mx >= (int)boot_info.fb.width)
-                    mx = (int)boot_info.fb.width - 1;
-                if (my >= (int)boot_info.fb.height)
-                    my = (int)boot_info.fb.height - 1;
-                buttons = e.buttons;
-                print("INPUT:MOUSE type=%u x=%u y=%u buttons=%u\n", (uint64_t)e.type, (uint64_t)mx,
-                      (uint64_t)my, (uint64_t)buttons);
-            }
+        if (input_dropped() != handled_drop) {
+            struct InputSnapshot state = input_recover();
+            handled_drop = state.dropped;
+            gui_recover(gui, state);
         }
+        struct Event event;
+        for (unsigned i = 0; i < 128 && input_next(&event); i++)
+            gui_event(gui, &event);
         uint64_t now = timer_ticks();
-        if (changed || now / 10 != painted / 10) {
-            ui_draw(now, free_frames, input, mx, my, buttons);
+        gui_update(gui, now);
+        if (now >= next_frame) {
             graphics_present();
-            painted = now;
+            remainder += 10;
+            unsigned step = 3;
+            if (remainder >= 30) {
+                step = 4;
+                remainder -= 30;
+            }
+            next_frame = timer_ticks() + step;
         }
-        uint64_t flags = irq_save();
-        if (timer_ticks() == now)
-            __asm__ volatile("sti; hlt" ::: "memory");
-        else
-            irq_restore(flags);
+        __asm__ volatile("sti; hlt" ::: "memory");
     }
 }

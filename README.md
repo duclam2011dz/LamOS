@@ -1,10 +1,12 @@
-# LamOS 1.0.0
+# LamOS 1.0.3
 
-LamOS is a small desktop-oriented x86_64 operating-system foundation written in C and NASM assembly. It boots its own ELF64 kernel through custom BIOS and UEFI loaders and displays an interactive graphical input dashboard.
+LamOS is a small desktop-oriented x86_64 operating-system foundation written in C and NASM assembly. It boots its own ELF64 kernel through custom BIOS and UEFI loaders and provides a software-rendered desktop with windows and an embedded Terminal shell.
 
-This release is a kernel graphics foundation. It does not run independent applications or provide windows, user processes, a kernel filesystem, networking, USB, audio or multiple CPU support. Physical computers and USB boot are not release targets.
+Phase I adds the core GUI foundation. All windows run inside the single-CPU kernel. There are no independent applications, user processes, kernel filesystem, networking, USB or audio services. Physical computers and USB boot are not release targets.
 
-![LamOS dashboard](docs/images/desktop.png)
+![LamOS desktop](docs/images/desktop.png)
+
+After opening Terminal. The initial desktop has no open windows.
 
 ## Implemented
 
@@ -12,9 +14,11 @@ This release is a kernel graphics foundation. It does not run independent applic
 - Custom UEFI `BOOTX64.EFI`: GOP, the same ELF64 kernel, memory-map handoff and `ExitBootServices` retry.
 - Shared versioned BootInfo, early COM1 logging, panic diagnostics and graphics panic screen.
 - Kernel GDT, IDT, TSS, double-fault IST and exception register dumps.
-- Physical frame allocator, four-level page tables, higher-half kernel, NX/read-only protection and an 8 MiB heap.
+- Physical frame allocator, four-level page tables, higher-half kernel, NX/read-only protection and a 128 MiB heap.
 - 8259 PIC, 100 Hz PIT, PS/2 keyboard and three-button mouse.
-- Clipped graphics primitives, an original bitmap alphabet, backbuffer, damaged-region presentation, software cursor and input events.
+- Clipped surfaces, lines/circles/polygons, premultiplied alpha, procedural icons and a complete original 8×16 printable ASCII font.
+- Dirty-region compositor, 16-window manager, preview move/resize, minimize/maximize and keyboard focus.
+- Multiple Terminal instances, bounded history/scrollback/editor, five shell commands, launcher/taskbar, virtual Folder and session Settings.
 - CMake/Ninja presets, GDB setup, clangd, formatting/static checks, host tests, emulator input tests and UBSan diagnostics.
 
 ## Prepare the development environment
@@ -48,7 +52,11 @@ python3 tools/run.py --uefi          # QEMU UEFI / OVMF
 python3 tools/run.py --build build/ubsan
 ```
 
-Type in the keyboard panel. Shift and Caps Lock affect letters, Backspace removes a character, and Enter logs/submits the line and clears it. The panel shows the tail of long input. Move the mouse and press/release its three buttons to update the cursor and button indicator. The logical keyboard layout is US QWERTY; there is no Vietnamese input method. Lowercase characters use uppercase bitmap shapes in this compact font.
+The desktop starts without open windows. Double-click Terminal, Folder or Settings, or use the taskbar launcher. Ctrl+Alt+T opens a Terminal. Folder and Settings are single-instance windows; Terminal supports multiple instances.
+
+Drag a titlebar or resize edge/corner to preview geometry; release commits and Escape cancels. Titlebar buttons close, minimize and maximize/restore. Alt+Tab switches windows (including minimized windows), Alt+F4 closes focus, and taskbar buttons focus/restore or minimize the focused window. Settings changes dark/light theme, one of three backgrounds and the profiling overlay in RAM only. Folder displays embedded read-only documents, not disk files.
+
+Terminal commands are `help`, `clear`, `sysinfo`, `meminfo` and `uptime`. Enter submits; Backspace/Delete and Left/Right/Home/End edit; Up/Down browse 32-command history and restore the draft. PageUp/PageDown browse 1,024 output lines. Ctrl+C cancels input; Ctrl+L clears output while retaining history. Input is US QWERTY printable ASCII with distinct uppercase/lowercase 8×16 glyphs.
 
 QEMU serial output appears in the terminal. Close the emulator window to stop it. Mouse capture is controlled by the emulator; release QEMU capture with Ctrl+Alt.
 
@@ -70,13 +78,13 @@ python3 tools/run.py --gdb
 gdb -x tools/kernel.gdb
 ```
 
-See [architecture](ARCHITECTURE.md), [boot ABI](docs/BOOT_PROTOCOL.md), [testing and fault injection](docs/TESTING.md), [release evidence](docs/VALIDATION.md) and [change history](CHANGELOG.md).
+See [architecture](ARCHITECTURE.md), [boot ABI](docs/BOOT_PROTOCOL.md), [GUI specification](docs/GUI.md), [testing and fault injection](docs/TESTING.md), [release evidence](docs/VALIDATION.md) and [change history](CHANGELOG.md).
 
 ## Compatibility limits
 
-The acceptance configuration has 128 MiB RAM, one x86_64 CPU with long mode/NX, PIC/PIT, COM1, i8042 PS/2 devices and a linear RGB framebuffer. PMM manages addresses below 4 GiB; the heap is fixed at 8 MiB. Supported framebuffers are 640×480 through 1280×1024, packed 24/32-bit pixels; the preferred mode is 1024×768×32. UEFI currently accepts GOP RGB/BGR byte layouts. Secure Boot is disabled.
+The acceptance configuration has 256 MiB RAM, one x86_64 CPU with long mode/NX, PIC/PIT, COM1, i8042 PS/2 devices and a linear RGB framebuffer. PMM manages addresses below 4 GiB; the heap is fixed at 128 MiB. Supported framebuffers are 640×480 through 1280×1024, packed 24/32-bit pixels; the preferred mode is 1024×768×32. UEFI currently accepts GOP RGB/BGR byte layouts. Secure Boot is disabled.
 
-The BIOS loader supports the project ISO layout: a one-sector ISO9660 root directory and a contiguous `KERNEL.ELF;1` no larger than 320 KiB. This is a CD/DVD ISO, not a hybrid USB-disk image. Firmware and emulator setup are part of the supported configuration.
+The BIOS loader supports the project ISO layout: a one-sector ISO9660 root directory and a contiguous `KERNEL.ELF;1` no larger than 4 MiB. This is a CD/DVD ISO, not a hybrid USB-disk image. Firmware and emulator setup are part of the supported configuration.
 
 ## License
 

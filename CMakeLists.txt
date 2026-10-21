@@ -116,3 +116,4 @@ add_custom_command(OUTPUT terminal-tests
  DEPENDS tests/terminal.c lib/terminal.c lib/shell.c lib/resources.c lib/surface.c include/terminal.h include/input.h VERBATIM)
 add_custom_target(terminal-tests-build ALL DEPENDS terminal-tests)
 add_test(NAME terminal-unit COMMAND ${CMAKE_BINARY_DIR}/terminal-tests)
+target_sources(kernel.elf PRIVATE lib/gui.c)

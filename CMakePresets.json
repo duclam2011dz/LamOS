@@ -97,6 +97,15 @@
         "FAULT": "nx",
         "UBSAN": "OFF"
       }
+    },
+    {
+      "name": "fault-graphics",
+      "inherits": "debug",
+      "binaryDir": "${sourceDir}/build/fault-graphics",
+      "cacheVariables": {
+        "FAULT": "graphics",
+        "UBSAN": "OFF"
+      }
     }
   ],
   "buildPresets": [
@@ -143,6 +152,10 @@
     {
       "name": "fault-nx",
       "configurePreset": "fault-nx"
+    },
+    {
+      "name": "fault-graphics",
+      "configurePreset": "fault-graphics"
     }
   ],
   "testPresets": [

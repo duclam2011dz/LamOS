@@ -2,7 +2,7 @@
 
 ## System model
 
-LamOS v1.0.0 is a single-address-space, single-CPU monolithic kernel. All code runs at ring 0. Drivers deliver bounded input events to a main-loop dashboard; there is no scheduler or process model. The same static ELF64 kernel is used on every boot path.
+LamOS v1.0.3 is a single-address-space, single-CPU monolithic kernel. All code runs at ring 0. Drivers deliver bounded input events to a main-loop desktop; there is no scheduler or process model. The same static ELF64 kernel is used on every boot path.
 
 ```mermaid
 flowchart TD
@@ -16,13 +16,13 @@ flowchart TD
   ENTRY --> CORE[Serial, GDT/IDT/TSS, PMM/VMM/heap]
   CORE --> DEV[PIC/PIT and PS/2]
   DEV --> QUEUE[Input queue]
-  QUEUE --> LOOP[Kernel dashboard loop]
+  QUEUE --> LOOP[GUI event loop]
   LOOP --> FB[Backbuffer and framebuffer]
 ```
 
 ## Boot and ownership
 
-BIOS Stage 1 is a 512-byte boot program padded to one 2,048-byte CD sector. Firmware initially loads four 512-byte units. Stage 1 uses the xorriso boot-info table to locate the next sixteen CD sectors containing Stage 2. Stage 2 collects E820, checks long mode/NX, finds VBE graphics, reads the ISO root and buffers the kernel at physical `0x10000`. It enables A20 and protected mode, calls a freestanding 32-bit C ELF loader at `0xc000`, then enables long mode.
+BIOS Stage 1 is a 512-byte boot program padded to one 2,048-byte CD sector. Firmware initially loads four 512-byte units. Stage 1 uses the xorriso boot-info table to locate the next sixteen CD sectors containing Stage 2. Stage 2 collects E820, checks long mode/NX, finds VBE graphics, reads the ISO root and validates ELF metadata. A 32 KiB bounce buffer at `0x10000` streams each PT_LOAD in CD-sector chunks. A protected-mode C helper at `0xc000` copies each chunk to its physical destination, then returns to real mode for the next firmware read. BSS is zeroed before final paging/long-mode handoff; ELF files are limited to 4 MiB.
 
 UEFI enters a PE32+ C application using Microsoft x64 calling conventions. The loader opens the kernel on its own ESP, selects GOP, allocates ELF segments at their declared physical locations and creates an arena below 4 GiB for BootInfo, initial paging and stack. It obtains the final map and retries `ExitBootServices` only for a stale map key. No firmware service is called after success.
 
@@ -37,7 +37,7 @@ See [the exact ABI and image layout](docs/BOOT_PROTOCOL.md).
 | Kernel physical load | Starts at `0x00100000`, ends below `0x02000000` |
 | Kernel virtual address | `0xffffffff80000000 + physical address` |
 | Direct physical alias | `0xffff800000000000 + physical address`, first 4 GiB |
-| Kernel heap | `0xffffc00000000000`, 8 MiB |
+| Kernel heap | `0xffffc00000000000`, 128 MiB |
 | Loader identity alias | Present at handoff; absent after kernel VMM initialization |
 
 The loader uses 2 MiB pages for initial mappings. The kernel creates its own four-level root, retains a 2 MiB direct map and splits leaves where 4 KiB permissions or framebuffer cache attributes are needed. Kernel text is RX, rodata is read-only/NX, and data/BSS/heap are RW/NX. Direct aliases of text/rodata are also read-only and all direct aliases are NX. CR0.WP prevents supervisor writes to read-only pages. Framebuffer pages use PCD/PWT uncached mappings. The broader bootstrap direct map includes unused physical holes; only described RAM and the framebuffer are intentionally accessed.
@@ -60,9 +60,15 @@ The 8259 PIC maps IRQs to vectors 32–47. Unused IRQs stay masked; IRQ7/15 rece
 
 The i8042 setup uses bounded polls, controller/port tests, ACK/RESEND handling and keyboard set 2 translated to set 1. IRQ1/IRQ12 drain a bounded number of bytes and route by the auxiliary status bit. Keyboard decoding tracks extended scan codes, releases, modifiers and Caps Lock. Text events remain distinct from physical key events. Pause is consumed; complete special-key/keypad text semantics are outside v1.
 
-The standard three-byte PS/2 mouse decoder validates packet synchronization, signed movement and overflow. It emits relative movement and individual button changes. The main loop clamps the cursor to the screen. A fixed 128-slot ring holds 127 events; overflow drops the newest event and increments a counter. There is no ISR allocation or rendering.
+The standard three-byte PS/2 mouse decoder validates packet synchronization, signed movement and overflow. It emits relative movement and individual button changes. The main loop clamps the cursor to the screen. A fixed 512-slot ring holds 511 events; overflow drops the newest event and increments a counter. The main loop discards pending events on loss, restores modifier/button snapshots, and cancels pointer capture. There is no ISR allocation or rendering.
 
-Graphics uses a heap-backed RGB backbuffer and clipped pixel/line/rectangle/text primitives. A small original 5×7 alphabet supplies the dashboard font; lowercase input retains its logical value while sharing uppercase glyphs. Presentation converts pixels using framebuffer pitch/channel layout and copies damaged regions. Cursor restoration uses the scene backbuffer; the cursor is composited directly to hardware after presentation.
+Graphics is divided into pure host-testable modules: Surface/primitives, embedded resources, compositor, window manager, Terminal, shell parser and desktop. Kernel adapters supply allocation, presentation, PIT time, TSC profiling and system information. No GUI library issues port I/O or changes IRQ state.
+
+Each window owns a 32-bit surface. The compositor reconstructs damaged regions from a procedural background and Z-ordered windows, then draws taskbar, launcher, interaction outline and cursor. Separate composition/front surfaces retain the result; presentation converts only damaged rectangles to firmware pixels. The framebuffer is never used to restore exposed content. The main loop caps changed frames at approximately 30 Hz and sleeps with HLT between interrupts.
+
+The window manager limits the scene to 16 generation-checked handles. It owns focus, capture, minimize/maximize and transactional resize. Move/resize previews do not modify window geometry until release. Each Terminal owns an independent bounded cell model, scrollback, history and editor. Shell commands receive system snapshots through an adapter. Folder exposes embedded virtual documents; Settings modifies session-only theme/background/profiling.
+
+See [GUI contracts](docs/GUI.md) and [input contracts](docs/INPUT.md).
 
 ## Build and diagnostics
 
