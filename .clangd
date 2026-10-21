@@ -1,0 +1,9 @@
+CompileFlags:
+  CompilationDatabase: build/debug
+  Compiler: clang
+  Add: [--target=x86_64-none-elf]
+  Remove: [-mgeneral-regs-only, -fno-sanitize=all]
+Diagnostics:
+  ClangTidy:
+    Add: [clang-analyzer-*, bugprone-*]
+    Remove: [clang-analyzer-valist.Uninitialized, clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling]

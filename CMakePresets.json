@@ -1,0 +1,171 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "debug",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_COMPILER": "x86_64-elf-gcc"
+      }
+    },
+    {
+      "name": "release",
+      "inherits": "debug",
+      "binaryDir": "${sourceDir}/build/release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "ubsan",
+      "inherits": "debug",
+      "binaryDir": "${sourceDir}/build/ubsan",
+      "cacheVariables": {
+        "UBSAN": "ON"
+      }
+    },
+    {
+      "name": "fault-panic",
+      "inherits": "debug",
+      "binaryDir": "${sourceDir}/build/fault-panic",
+      "cacheVariables": {
+        "FAULT": "panic",
+        "UBSAN": "OFF"
+      }
+    },
+    {
+      "name": "fault-divide",
+      "inherits": "debug",
+      "binaryDir": "${sourceDir}/build/fault-divide",
+      "cacheVariables": {
+        "FAULT": "divide",
+        "UBSAN": "OFF"
+      }
+    },
+    {
+      "name": "fault-opcode",
+      "inherits": "debug",
+      "binaryDir": "${sourceDir}/build/fault-opcode",
+      "cacheVariables": {
+        "FAULT": "opcode",
+        "UBSAN": "OFF"
+      }
+    },
+    {
+      "name": "fault-page",
+      "inherits": "debug",
+      "binaryDir": "${sourceDir}/build/fault-page",
+      "cacheVariables": {
+        "FAULT": "page",
+        "UBSAN": "OFF"
+      }
+    },
+    {
+      "name": "fault-double",
+      "inherits": "debug",
+      "binaryDir": "${sourceDir}/build/fault-double",
+      "cacheVariables": {
+        "FAULT": "double",
+        "UBSAN": "OFF"
+      }
+    },
+    {
+      "name": "fault-ubsan",
+      "inherits": "debug",
+      "binaryDir": "${sourceDir}/build/fault-ubsan",
+      "cacheVariables": {
+        "FAULT": "ubsan",
+        "UBSAN": "ON"
+      }
+    },
+    {
+      "name": "fault-write",
+      "inherits": "debug",
+      "binaryDir": "${sourceDir}/build/fault-write",
+      "cacheVariables": {
+        "FAULT": "write",
+        "UBSAN": "OFF"
+      }
+    },
+    {
+      "name": "fault-nx",
+      "inherits": "debug",
+      "binaryDir": "${sourceDir}/build/fault-nx",
+      "cacheVariables": {
+        "FAULT": "nx",
+        "UBSAN": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug",
+      "configurePreset": "debug"
+    },
+    {
+      "name": "release",
+      "configurePreset": "release"
+    },
+    {
+      "name": "ubsan",
+      "configurePreset": "ubsan"
+    },
+    {
+      "name": "fault-panic",
+      "configurePreset": "fault-panic"
+    },
+    {
+      "name": "fault-divide",
+      "configurePreset": "fault-divide"
+    },
+    {
+      "name": "fault-opcode",
+      "configurePreset": "fault-opcode"
+    },
+    {
+      "name": "fault-page",
+      "configurePreset": "fault-page"
+    },
+    {
+      "name": "fault-double",
+      "configurePreset": "fault-double"
+    },
+    {
+      "name": "fault-ubsan",
+      "configurePreset": "fault-ubsan"
+    },
+    {
+      "name": "fault-write",
+      "configurePreset": "fault-write"
+    },
+    {
+      "name": "fault-nx",
+      "configurePreset": "fault-nx"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "debug",
+      "configurePreset": "debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "release",
+      "configurePreset": "release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "ubsan",
+      "configurePreset": "ubsan",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

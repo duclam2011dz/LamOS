@@ -1,0 +1,6 @@
+# Port I/O, geometry primitives and C runtime functions intentionally use conventional positional arguments.
+# Annex K functions are unavailable in the freestanding runtime. Buffer bounds
+# are checked at the allocator, loader and graphics interfaces instead.
+Checks: '-*,clang-analyzer-*,bugprone-*,-bugprone-easily-swappable-parameters,-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling'
+WarningsAsErrors: '*'
+HeaderFilterRegex: '(include|kernel|lib)/.*'

@@ -1,0 +1,14 @@
+{
+  "clangd.path": "${workspaceFolder}/tools/clangd.sh",
+  "clangd.arguments": [
+    "--compile-commands-dir=${workspaceFolder}/build/debug"
+  ],
+  "C_Cpp.intelliSenseEngine": "disabled",
+  "editor.formatOnSave": true,
+  "[c]": {
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+  },
+  "files.associations": {
+    "*.h": "c"
+  }
+}

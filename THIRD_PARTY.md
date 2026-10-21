@@ -1,0 +1,33 @@
+# Third-party notices
+
+LamOS kernel, loaders, test code, scripts, documentation and the 5×7 bitmap alphabet were written for this project and use GPL-3.0-only. No external font or bootloader implementation is embedded.
+
+## GNU-EFI declarations
+
+UEFI compilation uses GNU-EFI 3.0.13 headers from Ubuntu package `3.0.13+git20210716.269ef9d-2ubuntu1`. These declarations include Intel, Hewlett-Packard, Apple, ARM and other upstream copyrights under the licenses recorded in [the preserved package notice](docs/licenses/GNU-EFI.txt). No GNU-EFI library or startup code is linked. Retain that notice with binary/source distributions.
+
+Upstream: https://sourceforge.net/projects/gnu-efi/
+
+## Development tools and firmware
+
+These are external build/test dependencies, not part of the LamOS kernel or ISO bootloader implementation:
+
+| Dependency | License family / source |
+| --- | --- |
+| GCC/binutils/GDB | GNU GPL; compiler runtime exceptions apply where provided by upstream; https://www.gnu.org/ |
+| NASM | BSD-2-Clause; https://www.nasm.us/ |
+| Clang/LLVM/LLD/clangd | Apache-2.0 with LLVM exceptions; https://llvm.org/ |
+| CMake | BSD-3-Clause; https://cmake.org/ |
+| Ninja | Apache-2.0; https://ninja-build.org/ |
+| cppcheck | GPL-3.0-or-later; https://cppcheck.sourceforge.io/ |
+| xorriso/libisoburn | GPL-2.0-or-later; https://www.gnu.org/software/xorriso/ |
+| mtools | GPL-3.0-or-later; https://www.gnu.org/software/mtools/ |
+| QEMU | GPL-2.0 and component-specific licenses; https://www.qemu.org/ |
+| SeaBIOS / SeaVGABIOS | LGPL-3.0 and component-specific notices; https://www.seabios.org/ |
+| OVMF/EDK II | BSD-2-Clause-Patent and component-specific licenses; https://github.com/tianocore/edk2 |
+| Bochs | LGPL-2.1-or-later; https://github.com/bochs-emu/Bochs |
+| Python | PSF license and component-specific notices; https://www.python.org/ |
+
+The local Bochs patch modifies LGPL-licensed upstream RFB code. It is kept as a source patch with the pinned upstream revision and rebuild instructions in `docs/TOOLCHAIN.md`; preserve upstream licensing if redistributing that separate executable. Downloaded `.deb` files, their license files and the external Bochs tree remain under ignored `.tools/`. Package versions/hashes are recorded in `tools/packages.lock.json`.
+
+Firmware is supplied by the emulator host and is not copied into `LamOS.iso`. The final link uses no libgcc, libc or GNU-EFI library. Do not bundle the tool cache into a LamOS source release.

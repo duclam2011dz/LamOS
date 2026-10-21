@@ -1,0 +1,11 @@
+{
+  "version": "0.2.0",
+  "configurations": [{
+    "name": "LamOS QEMU kernel (run tools/run.py --gdb first)",
+    "type": "cppdbg", "request": "launch", "MIMode": "gdb",
+    "program": "${workspaceFolder}/build/debug/kernel.elf",
+    "cwd": "${workspaceFolder}", "miDebuggerServerAddress": "localhost:1234",
+    "stopAtEntry": false,
+    "setupCommands": [{"text": "set architecture i386:x86-64"}, {"text": "hbreak kmain"}]
+  }]
+}

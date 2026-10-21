@@ -1,0 +1,7 @@
+/build/
+/.tools/
+/compile_commands.json
+__pycache__/
+*.pyc
+core
+core.*

@@ -1,0 +1,98 @@
+[
+  {
+    "package": "bochsbios",
+    "version": "2.7+dfsg-2",
+    "file": "bochsbios_2.7+dfsg-2_all.deb",
+    "sha256": "2880c77da4c07faea25e09325609d0991ed83729c52c249d75f40be654a8fe5f"
+  },
+  {
+    "package": "clangd-14",
+    "version": "1:14.0.0-1ubuntu1.1",
+    "file": "clangd-14_1%3a14.0.0-1ubuntu1.1_amd64.deb",
+    "sha256": "e257d8bced0126b6d92752b18292a4e51b12b4b7b820d38debb7f796367d47a1"
+  },
+  {
+    "package": "cmake-data",
+    "version": "3.22.1-1ubuntu1.22.04.2",
+    "file": "cmake-data_3.22.1-1ubuntu1.22.04.2_all.deb",
+    "sha256": "0009fa5659c702cb654f868a6d1e7ebd4f8d230092df2f086a32aab2fa00b9ba"
+  },
+  {
+    "package": "cmake",
+    "version": "3.22.1-1ubuntu1.22.04.2",
+    "file": "cmake_3.22.1-1ubuntu1.22.04.2_amd64.deb",
+    "sha256": "55a46b2f9bbc8899ae6772f0313ca2dd88801a514feaa488c88094c4fafa83c5"
+  },
+  {
+    "package": "gnu-efi",
+    "version": "3.0.13+git20210716.269ef9d-2ubuntu1",
+    "file": "gnu-efi_3.0.13+git20210716.269ef9d-2ubuntu1_amd64.deb",
+    "sha256": "7dfe58f28bd4f32277b46e942e9e1f5969ed0499a90c1e4c880be6ea47a349ec"
+  },
+  {
+    "package": "libabsl20210324",
+    "version": "0~20210324.2-2ubuntu0.3",
+    "file": "libabsl20210324_0~20210324.2-2ubuntu0.3_amd64.deb",
+    "sha256": "9558ca84c9c6dee6bcbc66af235f9225d4c5c2668eb529fe177b6c69534c3bb2"
+  },
+  {
+    "package": "libarchive13",
+    "version": "3.6.0-1ubuntu1.9",
+    "file": "libarchive13_3.6.0-1ubuntu1.9_amd64.deb",
+    "sha256": "979865c53912b227b8d65d208cd5810bcc3c535a042203a68eb1337dadd6d6c4"
+  },
+  {
+    "package": "libc-ares2",
+    "version": "1.18.1-1ubuntu0.22.04.3",
+    "file": "libc-ares2_1.18.1-1ubuntu0.22.04.3_amd64.deb",
+    "sha256": "d1c9a66669d6a4ec968efebb670a72d2188d98a1f37823c1f6cde8da23b51e0c"
+  },
+  {
+    "package": "libgrpc++1",
+    "version": "1.30.2-3build6",
+    "file": "libgrpc++1_1.30.2-3build6_amd64.deb",
+    "sha256": "574640b4cb72081a676889fb38469c4abd27b54c81540ee23a1f6b9cac0974eb"
+  },
+  {
+    "package": "libgrpc10",
+    "version": "1.30.2-3build6",
+    "file": "libgrpc10_1.30.2-3build6_amd64.deb",
+    "sha256": "10c74dcd0d0eaeb252b4fcc286cd50325a88469d46d9706f853393809b2a1ee8"
+  },
+  {
+    "package": "libjsoncpp25",
+    "version": "1.9.5-3",
+    "file": "libjsoncpp25_1.9.5-3_amd64.deb",
+    "sha256": "8844bfab4691b56cf49e741b65389147b03168bef4254b31ae97ad679d199a78"
+  },
+  {
+    "package": "libprotobuf23",
+    "version": "3.12.4-1ubuntu7.22.04.6",
+    "file": "libprotobuf23_3.12.4-1ubuntu7.22.04.6_amd64.deb",
+    "sha256": "b3680d038ac8272d3793d7c3eda651b19522127e7679c9c504f7ac548bbdf2ce"
+  },
+  {
+    "package": "libre2-9",
+    "version": "20220201+dfsg-1",
+    "file": "libre2-9_20220201+dfsg-1_amd64.deb",
+    "sha256": "3d5d4008272e4730fce3ea441bbd7e615c43da15f96d52d5c2f1d00059047ae4"
+  },
+  {
+    "package": "librhash0",
+    "version": "1.4.2-1ubuntu1",
+    "file": "librhash0_1.4.2-1ubuntu1_amd64.deb",
+    "sha256": "7355f23816c15acd96072a292823f7e33232ae29e794d69e694c7ddf2043ba2f"
+  },
+  {
+    "package": "ninja-build",
+    "version": "1.10.1-1",
+    "file": "ninja-build_1.10.1-1_amd64.deb",
+    "sha256": "ca8aae8ac7efad41d1f96a7e227653bd62b24e89cc7ddb18cec262f1869877b2"
+  },
+  {
+    "package": "vgabios",
+    "version": "0.8a+ds-2",
+    "file": "vgabios_0.8a+ds-2_all.deb",
+    "sha256": "9cb71644db434abd7bedb181ca2c2b35b0021049dbb3a01e840ba5b46130ecfb"
+  }
+]

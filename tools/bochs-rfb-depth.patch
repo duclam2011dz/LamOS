@@ -1,0 +1,22 @@
+diff --git a/bochs/gui/rfb.cc b/bochs/gui/rfb.cc
+index 1381429..27c0978 100644
+--- a/bochs/gui/rfb.cc
++++ b/bochs/gui/rfb.cc
+@@ -432,7 +432,7 @@ void bx_rfb_gui_c::graphics_tile_update(Bit8u *tile, unsigned x0, unsigned y0)
+ 
+ void bx_rfb_gui_c::dimension_update(unsigned x, unsigned y, unsigned fheight, unsigned fwidth, unsigned bpp)
+ {
+-  if (bpp == 8) {
++  if (bpp == 8 || bpp == 24 || bpp == 32) {
+     guest_bpp = bpp;
+   } else {
+     BX_PANIC(("%d bpp graphics mode not supported yet", bpp));
+@@ -638,7 +638,7 @@ void bx_rfb_gui_c::get_capabilities(Bit16u *xres, Bit16u *yres, Bit16u *bpp)
+     *xres = BX_RFB_DEF_XDIM;
+     *yres = BX_RFB_DEF_YDIM;
+   }
+-  *bpp = 8;
++  *bpp = 32;
+ }
+ 
+ void bx_rfb_gui_c::statusbar_setitem_specific(int element, bool active, bool w)
