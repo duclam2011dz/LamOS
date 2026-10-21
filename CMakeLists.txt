@@ -104,3 +104,9 @@ add_custom_command(OUTPUT compositor-tests
  DEPENDS tests/compositor.c lib/compositor.c lib/surface.c include/compositor.h VERBATIM)
 add_custom_target(compositor-tests-build ALL DEPENDS compositor-tests)
 add_test(NAME compositor-unit COMMAND ${CMAKE_BINARY_DIR}/compositor-tests)
+target_sources(kernel.elf PRIVATE lib/wm.c)
+add_custom_command(OUTPUT wm-tests
+ COMMAND ${HOST_CC} -std=c17 -Wall -Wextra -Werror -g -fsanitize=undefined -fno-sanitize-recover=all -I${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/tests/wm.c ${CMAKE_SOURCE_DIR}/lib/wm.c ${CMAKE_SOURCE_DIR}/lib/compositor.c ${CMAKE_SOURCE_DIR}/lib/surface.c -o wm-tests
+ DEPENDS tests/wm.c lib/wm.c lib/compositor.c lib/surface.c include/wm.h VERBATIM)
+add_custom_target(wm-tests-build ALL DEPENDS wm-tests)
+add_test(NAME wm-unit COMMAND ${CMAKE_BINARY_DIR}/wm-tests)
