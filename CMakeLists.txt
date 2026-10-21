@@ -92,3 +92,9 @@ add_custom_command(OUTPUT surface-tests
  DEPENDS tests/surface.c lib/surface.c include/surface.h VERBATIM)
 add_custom_target(surface-tests-build ALL DEPENDS surface-tests)
 add_test(NAME surface-unit COMMAND ${CMAKE_BINARY_DIR}/surface-tests)
+target_sources(kernel.elf PRIVATE lib/resources.c)
+add_custom_command(OUTPUT resources-tests
+ COMMAND ${HOST_CC} -std=c17 -Wall -Wextra -Werror -g -fsanitize=undefined -fno-sanitize-recover=all -I${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/tests/resources.c ${CMAKE_SOURCE_DIR}/lib/resources.c ${CMAKE_SOURCE_DIR}/lib/surface.c -o resources-tests
+ DEPENDS tests/resources.c lib/resources.c lib/font_data.inc lib/surface.c include/resources.h VERBATIM)
+add_custom_target(resources-tests-build ALL DEPENDS resources-tests)
+add_test(NAME resources-unit COMMAND ${CMAKE_BINARY_DIR}/resources-tests)
